@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz - Spotify Quiz App{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="text-center mb-4">
+            <h2>Welcome, {{ user_name }}!</h2>
+            <p class="text-muted">Let's discover your music personality</p>
+        </div>
+
+        <div class="card shadow-lg">
+            <div class="card-body p-4">
+                <div id="quiz-container">
+                    <div id="loading" class="text-center py-5">
+                        <div class="spinner-border text-success" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3">Loading your Spotify data...</p>
+                    </div>
+
+                    <div id="quiz-questions" style="display: none;">
+                        <div class="progress mb-4">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 0%" id="progress-bar"></div>
+                        </div>
+
+                        <div id="question-container">
+                            <!-- Questions will be loaded here -->
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-outline-secondary" id="prev-btn" style="display: none;">
+                                <i class="fas fa-arrow-left me-2"></i>Previous
+                            </button>
+                            <button type="button" class="btn btn-success" id="next-btn">
+                                Next<i class="fas fa-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentQuestion = 0;
+let answers = {};
+let quizData = {};
+let questions = [];
+
+// Load quiz data and questions
+async function loadQuiz() {
+    try {
+        const response = await fetch('/api/quiz-data');
+        if (!response.ok) {
+            throw new Error('Failed to load quiz data');
+        }
+        quizData = await response.json();
+        
+        // Generate questions based on user's data
+        generateQuestions();
+        showQuestion(0);
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('quiz-questions').style.display = 'block';
+    } catch (error) {
+        console.error('Error loading quiz:', error);
+        document.getElementById('loading').innerHTML = 
+            '<div class="alert alert-danger">Failed to load quiz data. Please try again.</div>';
+    }
+}
+
+function generateQuestions() {
+    questions = [
+        {
+            id: 'listening_frequency',
+            text: 'How often do you listen to music on Spotify?',
+            type: 'radio',
+            options: [
+                { value: 'daily', text: 'Daily - Music is life!' },
+                { value: 'weekly', text: 'Weekly - Regular listener' },
+                { value: 'monthly', text: 'Monthly - Casual listener' }
+            ]
+        },
+        {
+            id: 'discovery_method',
+            text: 'How do you usually discover new music?',
+            type: 'radio',
+            options: [
+                { value: 'recommendations', text: 'Spotify recommendations' },
+                { value: 'playlists', text: 'Curated playlists' },
+                { value: 'friends', text: 'Friends and social media' },
+                { value: 'explore', text: 'Exploring on my own' }
+            ]
+        },
+        {
+            id: 'mood_listening',
+            text: 'When do you listen to music most?',
+            type: 'radio',
+            options: [
+                { value: 'workout', text: 'During workouts' },
+                { value: 'work', text: 'While working/studying' },
+                { value: 'commute', text: 'Commuting/traveling' },
+                { value: 'relax', text: 'Relaxing at home' }
+            ]
+        },
+        {
+            id: 'genre_preference',
+            text: 'What describes your music taste best?',
+            type: 'radio',
+            options: [
+                { value: 'mainstream', text: 'I love popular hits' },
+                { value: 'indie', text: 'I prefer indie/alternative' },
+                { value: 'diverse', text: 'I listen to everything' },
+                { value: 'specific', text: 'I stick to specific genres' }
+            ]
+        },
+        {
+            id: 'playlist_behavior',
+            text: 'How do you organize your music?',
+            type: 'radio',
+            options: [
+                { value: 'mood', text: 'By mood/activity' },
+                { value: 'genre', text: 'By genre' },
+                { value: 'artist', text: 'By favorite artists' },
+                { value: 'random', text: 'I just hit shuffle' }
+            ]
+        }
+    ];
+}
+
+function showQuestion(index) {
+    const question = questions[index];
+    const container = document.getElementById('question-container');
+    
+    let html = `
+        <div class="question">
+            <h4 class="mb-4">${question.text}</h4>
+            <div class="options">
+    `;
+    
+    question.options.forEach((option, i) => {
+        const checked = answers[question.id] === option.value ? 'checked' : '';
+        html += `
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="radio" name="${question.id}" 
+                       id="${question.id}_${i}" value="${option.value}" ${checked}>
+                <label class="form-check-label" for="${question.id}_${i}">
+                    ${option.text}
+                </label>
+            </div>
+        `;
+    });
+    
+    html += '</div></div>';
+    container.innerHTML = html;
+    
+    // Update progress
+    const progress = ((index + 1) / questions.length) * 100;
+    document.getElementById('progress-bar').style.width = progress + '%';
+    
+    // Update navigation buttons
+    document.getElementById('prev-btn').style.display = index > 0 ? 'block' : 'none';
+    document.getElementById('next-btn').textContent = index === questions.length - 1 ? 'Finish Quiz' : 'Next';
+    
+    currentQuestion = index;
+}
+
+function saveAnswer() {
+    const question = questions[currentQuestion];
+    const selected = document.querySelector(`input[name="${question.id}"]:checked`);
+    if (selected) {
+        answers[question.id] = selected.value;
+    }
+}
+
+function nextQuestion() {
+    saveAnswer();
+    
+    if (currentQuestion < questions.length - 1) {
+        showQuestion(currentQuestion + 1);
+    } else {
+        submitQuiz();
+    }
+}
+
+function prevQuestion() {
+    if (currentQuestion > 0) {
+        showQuestion(currentQuestion - 1);
+    }
+}
+
+async function submitQuiz() {
+    saveAnswer();
+    
+    try {
+        const response = await fetch('/submit-quiz', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(answers)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to submit quiz');
+        }
+        
+        const results = await response.json();
+        window.location.href = '/results';
+        
+    } catch (error) {
+        console.error('Error submitting quiz:', error);
+        alert('Failed to submit quiz. Please try again.');
+    }
+}
+
+// Event listeners
+document.getElementById('next-btn').addEventListener('click', nextQuestion);
+document.getElementById('prev-btn').addEventListener('click', prevQuestion);
+
+// Load quiz when page loads
+document.addEventListener('DOMContentLoaded', loadQuiz);
+</script>
+{% endblock %}
+

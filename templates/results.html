@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Your Results - Spotify Quiz App{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="text-center mb-5">
+            <h1 class="display-5 text-success">
+                <i class="fas fa-trophy"></i> Your Music Personality
+            </h1>
+            <p class="lead">Here's what your Spotify data reveals about you!</p>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow">
+                    <div class="card-body text-center">
+                        <i class="fas fa-user-circle fa-4x text-success mb-3"></i>
+                        <h3 class="card-title">Listening Personality</h3>
+                        <h4 class="text-success">{{ results.listening_personality }}</h4>
+                        <p class="card-text">Based on your listening frequency and patterns</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow">
+                    <div class="card-body text-center">
+                        <i class="fas fa-palette fa-4x text-success mb-3"></i>
+                        <h3 class="card-title">Music Taste</h3>
+                        <h4 class="text-success">{{ results.music_taste or 'Eclectic Explorer' }}</h4>
+                        <p class="card-text">Your unique musical preferences and style</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow">
+                    <div class="card-body text-center">
+                        <i class="fas fa-compass fa-4x text-success mb-3"></i>
+                        <h3 class="card-title">Discovery Style</h3>
+                        <h4 class="text-success">{{ results.discovery_style or 'Curious Explorer' }}</h4>
+                        <p class="card-text">How you find and explore new music</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow">
+                    <div class="card-body text-center">
+                        <i class="fas fa-heart fa-4x text-success mb-3"></i>
+                        <h3 class="card-title">Mood Patterns</h3>
+                        <h4 class="text-success">{{ results.mood_patterns or 'Emotional Listener' }}</h4>
+                        <p class="card-text">Your music listening mood patterns</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if results.recommendations %}
+        <div class="card shadow-lg mt-4">
+            <div class="card-body">
+                <h3 class="card-title text-center mb-4">
+                    <i class="fas fa-magic"></i> Personalized Recommendations
+                </h3>
+                <div class="row">
+                    {% for track in results.recommendations[:6] %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    {% if track.album.images %}
+                                    <img src="{{ track.album.images[0].url }}" 
+                                         class="rounded me-3" 
+                                         style="width: 60px; height: 60px; object-fit: cover;">
+                                    {% endif %}
+                                    <div>
+                                        <h6 class="card-title mb-1">{{ track.name }}</h6>
+                                        <p class="card-text text-muted small mb-0">
+                                            {{ track.artists[0].name }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="text-center mt-5">
+            <a href="{{ url_for('index') }}" class="btn btn-success btn-lg me-3">
+                <i class="fas fa-redo me-2"></i>Take Quiz Again
+            </a>
+            <a href="https://open.spotify.com" target="_blank" class="btn btn-outline-success btn-lg">
+                <i class="fab fa-spotify me-2"></i>Open Spotify
+            </a>
+        </div>
+
+        <div class="card mt-5">
+            <div class="card-body text-center">
+                <h4>Share Your Results!</h4>
+                <p class="text-muted">Let your friends know about your music personality</p>
+                <div class="d-flex justify-content-center gap-3">
+                    <button class="btn btn-outline-primary" onclick="shareResults('twitter')">
+                        <i class="fab fa-twitter"></i> Twitter
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="shareResults('facebook')">
+                        <i class="fab fa-facebook"></i> Facebook
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="shareResults('linkedin')">
+                        <i class="fab fa-linkedin"></i> LinkedIn
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function shareResults(platform) {
+    const text = `I just discovered my music personality: {{ results.listening_personality }}! Take the Spotify Quiz to find yours!`;
+    const url = window.location.origin;
+    
+    let shareUrl = '';
+    
+    switch(platform) {
+        case 'twitter':
+            shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+            break;
+        case 'facebook':
+            shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+            break;
+        case 'linkedin':
+            shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+            break;
+    }
+    
+    if (shareUrl) {
+        window.open(shareUrl, '_blank', 'width=600,height=400');
+    }
+}
+</script>
+{% endblock %}
+

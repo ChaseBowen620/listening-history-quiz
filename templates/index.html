@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Spotify Quiz - Discover Your Music Personality{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="text-center mb-5">
+            <h1 class="display-4 text-success mb-3">
+                <i class="fab fa-spotify"></i> Spotify Quiz
+            </h1>
+            <p class="lead">Discover your unique music personality and listening habits!</p>
+        </div>
+
+        <div class="card shadow-lg">
+            <div class="card-body p-5">
+                <h2 class="card-title text-center mb-4">What's Your Music Story?</h2>
+                
+                <div class="row mb-4">
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="feature-icon">
+                            <i class="fas fa-music fa-3x text-success mb-3"></i>
+                            <h5>Analyze Your Taste</h5>
+                            <p class="text-muted">We'll analyze your top tracks, artists, and listening patterns</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="feature-icon">
+                            <i class="fas fa-brain fa-3x text-success mb-3"></i>
+                            <h5>Answer Questions</h5>
+                            <p class="text-muted">Answer fun questions about your music preferences and habits</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line fa-3x text-success mb-3"></i>
+                            <h5>Get Insights</h5>
+                            <p class="text-muted">Receive personalized insights and music recommendations</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <a href="{{ url_for('login') }}" class="btn btn-success btn-lg px-5">
+                        <i class="fab fa-spotify me-2"></i>Start Quiz with Spotify
+                    </a>
+                </div>
+
+                <div class="mt-4 text-center">
+                    <small class="text-muted">
+                        <i class="fas fa-shield-alt me-1"></i>
+                        Your data is secure and only used for this quiz
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-5">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-question-circle text-success me-2"></i>
+                            What We Analyze
+                        </h5>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i>Your top tracks and artists</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Listening frequency and patterns</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Music discovery preferences</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Mood-based listening habits</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-gift text-success me-2"></i>
+                            What You Get
+                        </h5>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-star text-success me-2"></i>Your music personality profile</li>
+                            <li><i class="fas fa-lightbulb text-success me-2"></i>Personalized recommendations</li>
+                            <li><i class="fas fa-chart-pie text-success me-2"></i>Listening habit insights</li>
+                            <li><i class="fas fa-heart text-success me-2"></i>Fun facts about your taste</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

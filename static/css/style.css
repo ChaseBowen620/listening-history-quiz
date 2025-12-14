@@ -1,0 +1,168 @@
+/* Custom styles for Spotify Quiz App */
+
+body {
+    background: linear-gradient(135deg, #1db954 0%, #1ed760 100%);
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+}
+
+.feature-icon {
+    padding: 1rem;
+    border-radius: 10px;
+    background: rgba(29, 185, 84, 0.1);
+    transition: all 0.3s ease;
+}
+
+.feature-icon:hover {
+    background: rgba(29, 185, 84, 0.2);
+    transform: scale(1.05);
+}
+
+.btn-success {
+    background: linear-gradient(45deg, #1db954, #1ed760);
+    border: none;
+    border-radius: 25px;
+    padding: 12px 30px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-success:hover {
+    background: linear-gradient(45deg, #1ed760, #1db954);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(29, 185, 84, 0.4);
+}
+
+.btn-outline-success {
+    border: 2px solid #1db954;
+    color: #1db954;
+    border-radius: 25px;
+    padding: 10px 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-success:hover {
+    background: #1db954;
+    border-color: #1db954;
+    transform: translateY(-2px);
+}
+
+.progress {
+    height: 8px;
+    border-radius: 10px;
+    background: rgba(29, 185, 84, 0.2);
+}
+
+.progress-bar {
+    border-radius: 10px;
+    background: linear-gradient(45deg, #1db954, #1ed760);
+}
+
+.form-check-input:checked {
+    background-color: #1db954;
+    border-color: #1db954;
+}
+
+.form-check-input:focus {
+    border-color: #1db954;
+    box-shadow: 0 0 0 0.25rem rgba(29, 185, 84, 0.25);
+}
+
+.question {
+    padding: 2rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    margin-bottom: 1rem;
+}
+
+.options .form-check {
+    padding: 1rem;
+    background: white;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.options .form-check:hover {
+    background: rgba(29, 185, 84, 0.1);
+    transform: translateX(5px);
+}
+
+.options .form-check-label {
+    cursor: pointer;
+    font-weight: 500;
+    margin-left: 0.5rem;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+footer {
+    margin-top: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .display-4 {
+        font-size: 2.5rem;
+    }
+    
+    .btn-lg {
+        padding: 10px 20px;
+        font-size: 1rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+}
+
+/* Animation for loading */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #1db954;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #1ed760;
+}
+
