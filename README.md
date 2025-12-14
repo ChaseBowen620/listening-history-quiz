@@ -23,7 +23,7 @@ A fun and interactive web application that analyzes your Spotify listening habit
 
 1. **Clone and navigate to the project:**
    ```bash
-   cd spotify-quiz-app
+   cd listening-history-quiz
    ```
 
 2. **Activate the virtual environment:**

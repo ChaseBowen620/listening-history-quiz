@@ -6,6 +6,8 @@ This guide covers deploying your Flask app to platforms that provide HTTPS URLs 
 
 Render provides free HTTPS URLs and is perfect for Flask apps.
 
+**⚠️ Important:** Spotify doesn't allow callback URLs to contain the brand name "spotify". Make sure your service name (and thus URL) doesn't include "spotify" in it. For example, use `listening-history-quiz` instead of `spotify-quiz-app`.
+
 ### Steps:
 
 1. **Sign up at [render.com](https://render.com)** (free tier available)
@@ -29,7 +31,7 @@ Render provides free HTTPS URLs and is perfect for Flask apps.
    - Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
    - Add `https://your-app-name.onrender.com/callback` to Redirect URIs
 
-6. **Deploy!** Render will give you a URL like `https://spotify-quiz-app.onrender.com`
+6. **Deploy!** Render will give you a URL like `https://listening-history-quiz.onrender.com`
 
 ---
 
@@ -46,7 +48,7 @@ Vercel works but requires Flask to run as serverless functions.
 
 2. **Deploy:**
    ```bash
-   cd spotify-quiz-app
+   cd listening-history-quiz
    vercel
    ```
 

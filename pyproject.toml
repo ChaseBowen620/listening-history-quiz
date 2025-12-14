@@ -1,5 +1,5 @@
 [project]
-name = "spotify-quiz-app"
+name = "listening-history-quiz"
 version = "0.1.0"
 description = "A quiz app for Spotify listening habits"
 requires-python = ">=3.8"

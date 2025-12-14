@@ -43,12 +43,36 @@ def login():
 @app.route('/callback')
 def callback():
     """Handle Spotify OAuth callback"""
-    sp_oauth = create_spotify_oauth()
-    session.clear()
-    code = request.args.get('code')
-    token_info = sp_oauth.get_access_token(code)
-    session['token_info'] = token_info
-    return redirect(url_for('quiz'))
+    try:
+        sp_oauth = create_spotify_oauth()
+        session.clear()
+        
+        # Check if we have the authorization code
+        code = request.args.get('code')
+        error = request.args.get('error')
+        
+        if error:
+            return f"Error from Spotify: {error}", 400
+        
+        if not code:
+            return "No authorization code provided", 400
+        
+        # Exchange code for access token
+        token_info = sp_oauth.get_access_token(code)
+        
+        if not token_info:
+            return "Failed to get access token", 400
+        
+        # Store token in session
+        session['token_info'] = token_info
+        
+        # Redirect to quiz page
+        return redirect(url_for('quiz'))
+    
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Callback error: {str(e)}")
+        return f"An error occurred during authentication: {str(e)}", 500
 
 @app.route('/quiz')
 def quiz():
