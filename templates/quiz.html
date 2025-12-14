@@ -4,10 +4,10 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-lg-8">
+    <div class="col-lg-10">
         <div class="text-center mb-4">
             <h2>Welcome, {{ user_name }}!</h2>
-            <p class="text-muted">Let's discover your music personality</p>
+            <p class="text-muted">Test your knowledge of your own music taste!</p>
         </div>
 
         <div class="card shadow-lg">
@@ -17,7 +17,7 @@
                         <div class="spinner-border text-success" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <p class="mt-3">Loading your Spotify data...</p>
+                        <p class="mt-3">Generating personalized questions...</p>
                     </div>
 
                     <div id="quiz-questions" style="display: none;">
@@ -43,26 +43,106 @@
         </div>
     </div>
 </div>
+
+<style>
+.drag-item {
+    padding: 12px;
+    margin: 8px 0;
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    cursor: move;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.drag-item:hover {
+    background: #e9ecef;
+    border-color: #0d6efd;
+}
+
+.drag-item.dragging {
+    opacity: 0.5;
+}
+
+.drag-item img {
+    width: 50px;
+    height: 50px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.fill-blank-image {
+    max-width: 300px;
+    border-radius: 8px;
+    margin: 20px auto;
+    display: block;
+}
+
+.placement-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.placement-option {
+    padding: 15px;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.placement-option:hover {
+    border-color: #0d6efd;
+    background: #f0f7ff;
+}
+
+.placement-option.selected {
+    border-color: #0d6efd;
+    background: #e7f3ff;
+}
+
+.placement-option img {
+    width: 100px;
+    height: 100px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    object-fit: cover;
+}
+</style>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
 let currentQuestion = 0;
 let answers = {};
-let quizData = {};
 let questions = [];
 
-// Load quiz data and questions
+// Load quiz questions from ChatGPT
 async function loadQuiz() {
     try {
-        const response = await fetch('/api/quiz-data');
-        if (!response.ok) {
-            throw new Error('Failed to load quiz data');
-        }
-        quizData = await response.json();
+        const response = await fetch('/api/quiz-questions', {
+            method: 'POST'
+        });
         
-        // Generate questions based on user's data
-        generateQuestions();
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to generate questions');
+        }
+        
+        const data = await response.json();
+        questions = data.questions;
+        
+        if (questions.length === 0) {
+            throw new Error('No questions generated');
+        }
+        
         showQuestion(0);
         
         document.getElementById('loading').style.display = 'none';
@@ -70,94 +150,49 @@ async function loadQuiz() {
     } catch (error) {
         console.error('Error loading quiz:', error);
         document.getElementById('loading').innerHTML = 
-            '<div class="alert alert-danger">Failed to load quiz data. Please try again.</div>';
+            '<div class="alert alert-danger">' +
+            '<h5>Failed to generate questions</h5>' +
+            '<p>' + error.message + '</p>' +
+            '<button class="btn btn-primary mt-2" onclick="location.reload()">Try Again</button>' +
+            '</div>';
     }
-}
-
-function generateQuestions() {
-    questions = [
-        {
-            id: 'listening_frequency',
-            text: 'How often do you listen to music on Spotify?',
-            type: 'radio',
-            options: [
-                { value: 'daily', text: 'Daily - Music is life!' },
-                { value: 'weekly', text: 'Weekly - Regular listener' },
-                { value: 'monthly', text: 'Monthly - Casual listener' }
-            ]
-        },
-        {
-            id: 'discovery_method',
-            text: 'How do you usually discover new music?',
-            type: 'radio',
-            options: [
-                { value: 'recommendations', text: 'Spotify recommendations' },
-                { value: 'playlists', text: 'Curated playlists' },
-                { value: 'friends', text: 'Friends and social media' },
-                { value: 'explore', text: 'Exploring on my own' }
-            ]
-        },
-        {
-            id: 'mood_listening',
-            text: 'When do you listen to music most?',
-            type: 'radio',
-            options: [
-                { value: 'workout', text: 'During workouts' },
-                { value: 'work', text: 'While working/studying' },
-                { value: 'commute', text: 'Commuting/traveling' },
-                { value: 'relax', text: 'Relaxing at home' }
-            ]
-        },
-        {
-            id: 'genre_preference',
-            text: 'What describes your music taste best?',
-            type: 'radio',
-            options: [
-                { value: 'mainstream', text: 'I love popular hits' },
-                { value: 'indie', text: 'I prefer indie/alternative' },
-                { value: 'diverse', text: 'I listen to everything' },
-                { value: 'specific', text: 'I stick to specific genres' }
-            ]
-        },
-        {
-            id: 'playlist_behavior',
-            text: 'How do you organize your music?',
-            type: 'radio',
-            options: [
-                { value: 'mood', text: 'By mood/activity' },
-                { value: 'genre', text: 'By genre' },
-                { value: 'artist', text: 'By favorite artists' },
-                { value: 'random', text: 'I just hit shuffle' }
-            ]
-        }
-    ];
 }
 
 function showQuestion(index) {
     const question = questions[index];
     const container = document.getElementById('question-container');
     
-    let html = `
-        <div class="question">
-            <h4 class="mb-4">${question.text}</h4>
-            <div class="options">
-    `;
+    let html = `<div class="question">`;
+    html += `<h4 class="mb-4">${question.question}</h4>`;
     
-    question.options.forEach((option, i) => {
-        const checked = answers[question.id] === option.value ? 'checked' : '';
-        html += `
-            <div class="form-check mb-3">
-                <input class="form-check-input" type="radio" name="${question.id}" 
-                       id="${question.id}_${i}" value="${option.value}" ${checked}>
-                <label class="form-check-label" for="${question.id}_${i}">
-                    ${option.text}
-                </label>
-            </div>
-        `;
-    });
+    // Handle different question types
+    switch(question.type) {
+        case 'placement':
+            html += renderPlacementQuestion(question);
+            break;
+        case 'true_false':
+            html += renderTrueFalseQuestion(question);
+            break;
+        case 'drag_drop':
+            html += renderDragDropQuestion(question);
+            break;
+        case 'fill_blank':
+            html += renderFillBlankQuestion(question);
+            break;
+        case 'multiple_choice':
+            html += renderMultipleChoiceQuestion(question);
+            break;
+        default:
+            html += `<p class="text-danger">Unknown question type: ${question.type}</p>`;
+    }
     
-    html += '</div></div>';
+    html += `</div>`;
     container.innerHTML = html;
+    
+    // Initialize drag-drop if needed
+    if (question.type === 'drag_drop') {
+        initializeDragDrop(question.id);
+    }
     
     // Update progress
     const progress = ((index + 1) / questions.length) * 100;
@@ -170,17 +205,150 @@ function showQuestion(index) {
     currentQuestion = index;
 }
 
-function saveAnswer() {
-    const question = questions[currentQuestion];
-    const selected = document.querySelector(`input[name="${question.id}"]:checked`);
-    if (selected) {
-        answers[question.id] = selected.value;
+function renderPlacementQuestion(question) {
+    let html = '<div class="placement-options">';
+    const options = question.options || [];
+    const currentAnswer = answers[question.id];
+    
+    options.forEach((option, i) => {
+        const isSelected = currentAnswer === option;
+        html += `
+            <div class="placement-option ${isSelected ? 'selected' : ''}" 
+                 onclick="selectPlacement('${question.id}', '${option.replace(/'/g, "\\'")}')">
+                ${question.data && question.data.image_urls && question.data.image_urls[option] 
+                    ? `<img src="${question.data.image_urls[option]}" alt="${option}" onerror="this.style.display='none'">` 
+                    : ''}
+                <div><strong>${option}</strong></div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    return html;
+}
+
+function renderTrueFalseQuestion(question) {
+    const currentAnswer = answers[question.id];
+    return `
+        <div class="d-flex gap-3 justify-content-center mt-4">
+            <button class="btn btn-lg ${currentAnswer === 'true' ? 'btn-primary' : 'btn-outline-primary'}" 
+                    onclick="selectTrueFalse('${question.id}', 'true')">
+                True
+            </button>
+            <button class="btn btn-lg ${currentAnswer === 'false' ? 'btn-primary' : 'btn-outline-primary'}" 
+                    onclick="selectTrueFalse('${question.id}', 'false')">
+                False
+            </button>
+        </div>
+    `;
+}
+
+function renderDragDropQuestion(question) {
+    const items = question.data?.items || [];
+    const currentOrder = answers[question.id] || items.map((item, i) => i);
+    
+    let html = '<div class="mt-4">';
+    html += '<p class="text-muted mb-3">Drag items to reorder them:</p>';
+    html += `<div id="drag-list-${question.id}" class="drag-list">`;
+    
+    currentOrder.forEach((idx) => {
+        const item = items[idx];
+        html += `
+            <div class="drag-item" data-index="${idx}">
+                ${item.image_url ? `<img src="${item.image_url}" alt="${item.name}" onerror="this.style.display='none'">` : ''}
+                <div>
+                    <strong>${item.name}</strong>
+                    ${item.artist ? `<div class="text-muted small">${item.artist}</div>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div></div>';
+    return html;
+}
+
+function renderFillBlankQuestion(question) {
+    const currentAnswer = answers[question.id] || '';
+    const imageUrl = question.data?.image_url;
+    
+    let html = '<div class="mt-4">';
+    if (imageUrl) {
+        html += `<img src="${imageUrl}" alt="Playlist/Album image" class="fill-blank-image" onerror="this.style.display='none'">`;
     }
+    html += `
+        <div class="mt-3">
+            <input type="text" 
+                   class="form-control form-control-lg text-center" 
+                   id="fill-blank-${question.id}"
+                   placeholder="Enter your answer..."
+                   value="${currentAnswer}"
+                   onchange="saveFillBlank('${question.id}')">
+        </div>
+    `;
+    html += '</div>';
+    return html;
+}
+
+function renderMultipleChoiceQuestion(question) {
+    const options = question.options || [];
+    const currentAnswer = answers[question.id];
+    
+    let html = '<div class="mt-4">';
+    options.forEach((option, i) => {
+        const checked = currentAnswer === option ? 'checked' : '';
+        html += `
+            <div class="form-check mb-3 p-3 border rounded">
+                <input class="form-check-input" type="radio" 
+                       name="${question.id}" 
+                       id="${question.id}_${i}" 
+                       value="${option}" 
+                       ${checked}
+                       onchange="saveAnswer('${question.id}', '${option.replace(/'/g, "\\'")}')">
+                <label class="form-check-label" for="${question.id}_${i}">
+                    ${option}
+                </label>
+            </div>
+        `;
+    });
+    html += '</div>';
+    return html;
+}
+
+function selectPlacement(questionId, value) {
+    answers[questionId] = value;
+    showQuestion(currentQuestion); // Refresh to show selection
+}
+
+function selectTrueFalse(questionId, value) {
+    answers[questionId] = value;
+    showQuestion(currentQuestion); // Refresh to show selection
+}
+
+function saveFillBlank(questionId) {
+    const input = document.getElementById(`fill-blank-${questionId}`);
+    answers[questionId] = input.value.trim();
+}
+
+function saveAnswer(questionId, value) {
+    answers[questionId] = value;
+}
+
+function initializeDragDrop(questionId) {
+    const list = document.getElementById(`drag-list-${questionId}`);
+    if (!list) return;
+    
+    new Sortable(list, {
+        animation: 150,
+        handle: '.drag-item',
+        onEnd: function(evt) {
+            const items = Array.from(list.children);
+            const order = items.map(item => parseInt(item.dataset.index));
+            answers[questionId] = order;
+        }
+    });
 }
 
 function nextQuestion() {
-    saveAnswer();
-    
     if (currentQuestion < questions.length - 1) {
         showQuestion(currentQuestion + 1);
     } else {
@@ -195,7 +363,13 @@ function prevQuestion() {
 }
 
 async function submitQuiz() {
-    saveAnswer();
+    // Validate all questions answered
+    const unanswered = questions.filter(q => !answers[q.id] || answers[q.id] === '');
+    if (unanswered.length > 0) {
+        if (!confirm(`You have ${unanswered.length} unanswered question(s). Submit anyway?`)) {
+            return;
+        }
+    }
     
     try {
         const response = await fetch('/submit-quiz', {
@@ -227,4 +401,3 @@ document.getElementById('prev-btn').addEventListener('click', prevQuestion);
 document.addEventListener('DOMContentLoaded', loadQuiz);
 </script>
 {% endblock %}
-
