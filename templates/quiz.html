@@ -1,13 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Quiz - Spotify Quiz App{% endblock %}
+{% block title %}Quiz - Listening History Quiz{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-10">
         <div class="text-center mb-4">
             <h2>Welcome, {{ user_name }}!</h2>
+            {% if is_multiplayer %}
+            <div class="alert alert-info">
+                <i class="fas fa-users me-2"></i><strong>Multiplayer Mode</strong> - Competing with other players!
+            </div>
+            {% else %}
             <p class="text-muted">Test your knowledge of your own music taste!</p>
+            {% endif %}
         </div>
 
         <div class="card shadow-lg">
@@ -123,12 +129,25 @@
 let currentQuestion = 0;
 let answers = {};
 let questions = [];
+const lobbyId = '{{ lobby_id }}' || null;
+const isMultiplayer = {{ 'true' if is_multiplayer else 'false' }};
+let questionAnswered = {};
+let waitingForOthers = false;
+let selectedPlayers = [];
 
-// Load quiz questions from ChatGPT
+// Load quiz questions from templates
 async function loadQuiz() {
     try {
-        const response = await fetch('/api/quiz-questions', {
-            method: 'POST'
+        const url = lobbyId 
+            ? `/api/quiz-questions?lobby=${lobbyId}`
+            : '/api/quiz-questions';
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ lobby_id: lobbyId })
         });
         
         if (!response.ok) {
@@ -138,12 +157,20 @@ async function loadQuiz() {
         
         const data = await response.json();
         questions = data.questions;
+        if (data.selected_players) {
+            selectedPlayers = data.selected_players;
+        }
         
         if (questions.length === 0) {
             throw new Error('No questions generated');
         }
         
-        showQuestion(0);
+        // Show selected players announcement if multiplayer
+        if (isMultiplayer && selectedPlayers.length > 0) {
+            showSelectedPlayers();
+        } else {
+            showQuestion(0);
+        }
         
         document.getElementById('loading').style.display = 'none';
         document.getElementById('quiz-questions').style.display = 'block';
@@ -156,6 +183,20 @@ async function loadQuiz() {
             '<button class="btn btn-primary mt-2" onclick="location.reload()">Try Again</button>' +
             '</div>';
     }
+}
+
+function showSelectedPlayers() {
+    const container = document.getElementById('question-container');
+    container.innerHTML = `
+        <div class="alert alert-info text-center">
+            <h4><i class="fas fa-users me-2"></i>Selected Players</h4>
+            <p class="mb-2">Questions will be based on data from:</p>
+            <ul class="list-unstyled">
+                ${selectedPlayers.map(p => `<li><strong>${p}</strong></li>`).join('')}
+            </ul>
+            <button class="btn btn-primary mt-3" onclick="showQuestion(0)">Start Quiz</button>
+        </div>
+    `;
 }
 
 function showQuestion(index) {
@@ -245,6 +286,7 @@ function renderTrueFalseQuestion(question) {
 function renderDragDropQuestion(question) {
     const items = question.data?.items || [];
     const currentOrder = answers[question.id] || items.map((item, i) => i);
+    const isAnswered = questionAnswered[question.id] || false;
     
     let html = '<div class="mt-4">';
     html += '<p class="text-muted mb-3">Drag items to reorder them:</p>';
@@ -263,13 +305,18 @@ function renderDragDropQuestion(question) {
         `;
     });
     
-    html += '</div></div>';
+    html += '</div>';
+    if (!isAnswered && isMultiplayer) {
+        html += '<button class="btn btn-success w-100 mt-3" onclick="submitCurrentAnswer()">Submit Answer</button>';
+    }
+    html += '</div>';
     return html;
 }
 
 function renderFillBlankQuestion(question) {
     const currentAnswer = answers[question.id] || '';
     const imageUrl = question.data?.image_url;
+    const isAnswered = questionAnswered[question.id] || false;
     
     let html = '<div class="mt-4">';
     if (imageUrl) {
@@ -282,9 +329,13 @@ function renderFillBlankQuestion(question) {
                    id="fill-blank-${question.id}"
                    placeholder="Enter your answer..."
                    value="${currentAnswer}"
+                   ${isAnswered ? 'disabled' : ''}
                    onchange="saveFillBlank('${question.id}')">
         </div>
     `;
+    if (!isAnswered && isMultiplayer) {
+        html += '<button class="btn btn-success w-100 mt-3" onclick="submitCurrentAnswer()">Submit Answer</button>';
+    }
     html += '</div>';
     return html;
 }
@@ -292,10 +343,12 @@ function renderFillBlankQuestion(question) {
 function renderMultipleChoiceQuestion(question) {
     const options = question.options || [];
     const currentAnswer = answers[question.id];
+    const isAnswered = questionAnswered[question.id] || false;
     
     let html = '<div class="mt-4">';
     options.forEach((option, i) => {
         const checked = currentAnswer === option ? 'checked' : '';
+        const disabled = isAnswered ? 'disabled' : '';
         html += `
             <div class="form-check mb-3 p-3 border rounded">
                 <input class="form-check-input" type="radio" 
@@ -303,25 +356,214 @@ function renderMultipleChoiceQuestion(question) {
                        id="${question.id}_${i}" 
                        value="${option}" 
                        ${checked}
-                       onchange="saveAnswer('${question.id}', '${option.replace(/'/g, "\\'")}')">
+                       ${disabled}
+                       onchange="saveAnswer('${question.id}', '${option.replace(/'/g, "\\'")}'); handleAnswer('${question.id}', '${option.replace(/'/g, "\\'")}')">
                 <label class="form-check-label" for="${question.id}_${i}">
                     ${option}
                 </label>
             </div>
         `;
     });
+    if (!isAnswered && isMultiplayer) {
+        html += '<button class="btn btn-success w-100 mt-3" onclick="submitCurrentAnswer()">Submit Answer</button>';
+    }
     html += '</div>';
     return html;
+}
+
+function submitCurrentAnswer() {
+    const question = questions[currentQuestion];
+    const answer = answers[question.id];
+    if (answer !== undefined && answer !== '') {
+        handleAnswer(question.id, answer);
+    }
 }
 
 function selectPlacement(questionId, value) {
     answers[questionId] = value;
     showQuestion(currentQuestion); // Refresh to show selection
+    handleAnswer(questionId, value);
 }
 
 function selectTrueFalse(questionId, value) {
     answers[questionId] = value;
     showQuestion(currentQuestion); // Refresh to show selection
+    handleAnswer(questionId, value);
+}
+
+function handleAnswer(questionId, answer) {
+    const question = questions.find(q => q.id === questionId);
+    if (!question) return;
+    
+    const isCorrect = checkAnswer(question, answer);
+    
+    if (isMultiplayer) {
+        // Submit answer and wait for others
+        submitQuestionAnswer(questionId, answer, isCorrect);
+    } else {
+        // Solo mode - immediate feedback
+        showFeedback(isCorrect);
+    }
+}
+
+function checkAnswer(question, answer) {
+    const correct = question.correct_answer;
+    if (question.type === 'drag_drop') {
+        const userOrder = Array.isArray(answer) ? answer : JSON.parse(answer || '[]');
+        const correctOrder = question.data?.correct_order || [];
+        return JSON.stringify(userOrder) === JSON.stringify(correctOrder);
+    } else if (question.type === 'true_false') {
+        return String(answer).toLowerCase() === String(correct).toLowerCase();
+    } else {
+        return String(answer).trim().toLowerCase() === String(correct).trim().toLowerCase();
+    }
+}
+
+function showFeedback(isCorrect) {
+    const overlay = document.createElement('div');
+    overlay.className = `feedback-overlay ${isCorrect ? 'correct' : 'incorrect'}`;
+    overlay.innerHTML = `
+        <div class="feedback-content">
+            <i class="fas fa-${isCorrect ? 'check-circle' : 'times-circle'} fa-3x mb-3"></i>
+            <div>${isCorrect ? 'Correct!' : 'Incorrect'}</div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('show'), 10);
+    setTimeout(() => {
+        overlay.classList.remove('show');
+        setTimeout(() => overlay.remove(), 300);
+    }, 1500);
+}
+
+async function submitQuestionAnswer(questionId, answer, isCorrect) {
+    if (!lobbyId) return;
+    
+    try {
+        await fetch(`/api/lobby/${lobbyId}/submit-answer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question_id: questionId,
+                answer: answer,
+                question_index: currentQuestion
+            })
+        });
+        
+        questionAnswered[questionId] = true;
+        checkQuestionStatus();
+    } catch (error) {
+        console.error('Error submitting answer:', error);
+    }
+}
+
+async function checkQuestionStatus() {
+    if (!lobbyId) return;
+    
+    const response = await fetch(`/api/lobby/${lobbyId}/question-status`);
+    const data = await response.json();
+    
+    const total = data.total_participants;
+    const answered = data.answered;
+    
+    if (answered >= total) {
+        // Everyone answered - reveal answer and show leaderboard
+        revealAnswerAndLeaderboard();
+    } else {
+        // Show waiting overlay
+        showWaitingOverlay(answered, total);
+    }
+}
+
+function showWaitingOverlay(answered, total) {
+    if (waitingForOthers) return;
+    waitingForOthers = true;
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'waiting-overlay';
+    overlay.id = 'waiting-overlay';
+    overlay.innerHTML = `
+        <div>
+            <i class="fas fa-spinner fa-spin fa-3x mb-3"></i>
+            <h3>Waiting for other players...</h3>
+            <p>${answered} of ${total} players answered</p>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    // Poll every second
+    const pollInterval = setInterval(async () => {
+        const statusResponse = await fetch(`/api/lobby/${lobbyId}/question-status`);
+        const statusData = await statusResponse.json();
+        
+        if (statusData.answered >= statusData.total_participants) {
+            clearInterval(pollInterval);
+            revealAnswerAndLeaderboard();
+        } else {
+            overlay.querySelector('p').textContent = `${statusData.answered} of ${statusData.total_participants} players answered`;
+        }
+    }, 1000);
+    
+    // Timeout after 15 seconds
+    setTimeout(() => {
+        clearInterval(pollInterval);
+        revealAnswerAndLeaderboard();
+    }, 15000);
+}
+
+async function revealAnswerAndLeaderboard() {
+    waitingForOthers = false;
+    const overlay = document.getElementById('waiting-overlay');
+    if (overlay) overlay.remove();
+    
+    const question = questions[currentQuestion];
+    const userAnswer = answers[question.id];
+    const isCorrect = checkAnswer(question, userAnswer);
+    
+    // Show feedback
+    showFeedback(isCorrect);
+    
+    // Get and show leaderboard
+    const leaderboardResponse = await fetch(`/api/lobby/${lobbyId}/leaderboard`);
+    const leaderboardData = await leaderboardResponse.json();
+    showQuestionLeaderboard(leaderboardData.leaderboard, question, isCorrect);
+}
+
+function showQuestionLeaderboard(leaderboard, question, isCorrect) {
+    const container = document.getElementById('question-container');
+    const leaderboardHtml = `
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Leaderboard</h5>
+            </div>
+            <div class="card-body leaderboard-mini">
+                <ol class="list-group list-group-numbered">
+                    ${leaderboard.map((p, i) => `
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">${p.game_name}</div>
+                            </div>
+                            <span class="badge bg-success rounded-pill">${p.score} pts</span>
+                        </li>
+                    `).join('')}
+                </ol>
+            </div>
+        </div>
+        <div class="alert ${isCorrect ? 'alert-success' : 'alert-danger'}">
+            <strong>Your answer:</strong> ${getAnswerDisplay(question, answers[question.id])}<br>
+            <strong>Correct answer:</strong> ${getAnswerDisplay(question, question.correct_answer)}
+        </div>
+        <button class="btn btn-primary w-100" onclick="nextQuestion()">Next Question</button>
+    `;
+    
+    container.innerHTML = leaderboardHtml;
+}
+
+function getAnswerDisplay(question, answer) {
+    if (question.type === 'drag_drop') {
+        return 'Ordered list';
+    }
+    return answer || 'No answer';
 }
 
 function saveFillBlank(questionId) {
@@ -349,10 +591,23 @@ function initializeDragDrop(questionId) {
 }
 
 function nextQuestion() {
-    if (currentQuestion < questions.length - 1) {
-        showQuestion(currentQuestion + 1);
+    if (isMultiplayer && lobbyId) {
+        // Move to next question in multiplayer
+        fetch(`/api/lobby/${lobbyId}/next-question`, { method: 'POST' })
+            .then(() => {
+                if (currentQuestion < questions.length - 1) {
+                    currentQuestion++;
+                    showQuestion(currentQuestion);
+                } else {
+                    submitQuiz();
+                }
+            });
     } else {
-        submitQuiz();
+        if (currentQuestion < questions.length - 1) {
+            showQuestion(currentQuestion + 1);
+        } else {
+            submitQuiz();
+        }
     }
 }
 
@@ -377,7 +632,10 @@ async function submitQuiz() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(answers)
+            body: JSON.stringify({
+                answers: answers,
+                lobby_id: lobbyId
+            })
         });
         
         if (!response.ok) {
@@ -385,7 +643,10 @@ async function submitQuiz() {
         }
         
         const results = await response.json();
-        window.location.href = '/results';
+        const resultsUrl = lobbyId 
+            ? `/results?lobby=${lobbyId}`
+            : '/results';
+        window.location.href = resultsUrl;
         
     } catch (error) {
         console.error('Error submitting quiz:', error);

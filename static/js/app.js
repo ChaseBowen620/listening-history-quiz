@@ -1,4 +1,4 @@
-// Spotify Quiz App JavaScript
+// Listening History Quiz JavaScript
 
 // Utility functions
 function showNotification(message, type = 'info') {
