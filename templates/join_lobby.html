@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Join Lobby - Listening History Quiz{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card shadow-lg">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <h2><i class="fas fa-gamepad me-2"></i>Join Game</h2>
+                    <p class="text-muted">Lobby Code: <strong>{{ lobby.id }}</strong></p>
+                </div>
+
+                {% if already_joined %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    You're already in this lobby as <strong>{{ game_name }}</strong>!
+                </div>
+                <div class="text-center mt-4">
+                    <a href="/quiz?lobby={{ lobby.id }}" class="btn btn-success btn-lg">
+                        <i class="fas fa-play me-2"></i>Go to Quiz
+                    </a>
+                </div>
+                {% else %}
+                <form id="join-form">
+                    <div class="mb-4">
+                        <label for="game-name" class="form-label">
+                            <strong>Enter Your Game Name</strong>
+                        </label>
+                        <input type="text" 
+                               class="form-control form-control-lg" 
+                               id="game-name" 
+                               placeholder="Your awesome name"
+                               required
+                               maxlength="50">
+                        <small class="text-muted">This is how others will see you in the game</small>
+                    </div>
+
+                    <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+                    <div id="success-message" class="alert alert-success" style="display: none;"></div>
+
+                    <button type="submit" class="btn btn-success btn-lg w-100" id="join-btn">
+                        <i class="fas fa-sign-in-alt me-2"></i>Join Lobby
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="/" class="text-muted">
+                <i class="fas fa-arrow-left me-1"></i>Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const lobbyId = '{{ lobby.id }}';
+
+document.getElementById('join-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const gameName = document.getElementById('game-name').value.trim();
+    const errorDiv = document.getElementById('error-message');
+    const successDiv = document.getElementById('success-message');
+    const joinBtn = document.getElementById('join-btn');
+    
+    // Clear previous messages
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+    
+    if (!gameName) {
+        errorDiv.textContent = 'Please enter a game name';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    // Disable button
+    joinBtn.disabled = true;
+    joinBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Joining...';
+    
+    try {
+        const response = await fetch(`/api/lobby/${lobbyId}/join`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ game_name: gameName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            errorDiv.textContent = data.error;
+            errorDiv.style.display = 'block';
+            joinBtn.disabled = false;
+            joinBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Join Lobby';
+        } else {
+            successDiv.textContent = 'Successfully joined! Waiting for game to start...';
+            successDiv.style.display = 'block';
+            
+            // Wait for game to start (poll for status)
+            let statusData = null;
+            const checkGameStatus = setInterval(async () => {
+                const statusResponse = await fetch(`/api/lobby/${lobbyId}/status`);
+                statusData = await statusResponse.json();
+                
+                if (statusData.lobby && statusData.lobby.status === 'active') {
+                    clearInterval(checkGameStatus);
+                    window.location.href = `/quiz?lobby=${lobbyId}`;
+                }
+            }, 2000);
+            
+            // Also redirect after 30 seconds if still waiting
+            setTimeout(() => {
+                clearInterval(checkGameStatus);
+                if (statusData && statusData.lobby && statusData.lobby.status === 'active') {
+                    window.location.href = `/quiz?lobby=${lobbyId}`;
+                }
+            }, 30000);
+        }
+    } catch (error) {
+        console.error('Error joining lobby:', error);
+        errorDiv.textContent = 'Failed to join lobby. Please try again.';
+        errorDiv.style.display = 'block';
+        joinBtn.disabled = false;
+        joinBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Join Lobby';
+    }
+});
+</script>
+{% endblock %}

@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Spotify Quiz - Discover Your Music Personality{% endblock %}
+{% block title %}Listening History Quiz - Discover Your Music Personality{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="text-center mb-5">
             <h1 class="display-4 text-success mb-3">
-                <i class="fab fa-spotify"></i> Spotify Quiz
+                <i class="fab fa-spotify"></i> Listening History Quiz
             </h1>
             <p class="lead">Discover your unique music personality and listening habits!</p>
         </div>
@@ -41,9 +41,14 @@
                 </div>
 
                 <div class="text-center">
-                    <a href="{{ url_for('login') }}" class="btn btn-success btn-lg px-5">
-                        <i class="fab fa-spotify me-2"></i>Start Quiz with Spotify
-                    </a>
+                    <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
+                        <a href="{{ url_for('lobby') }}" class="btn btn-primary btn-lg px-5">
+                            <i class="fas fa-users me-2"></i>Play Game (Multiplayer)
+                        </a>
+                        <a href="{{ url_for('login') }}" class="btn btn-success btn-lg px-5">
+                            <i class="fab fa-spotify me-2"></i>Solo Quiz
+                        </a>
+                    </div>
                 </div>
 
                 <div class="mt-4 text-center">

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Your Results - Spotify Quiz App{% endblock %}
+{% block title %}Your Results - Listening History Quiz{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -11,6 +11,12 @@
             </h1>
             <p class="lead">{{ results.feedback }}</p>
         </div>
+
+        {% if is_multiplayer %}
+        <div class="alert alert-info text-center">
+            <i class="fas fa-users me-2"></i><strong>Multiplayer Game</strong> - See how you rank against other players!
+        </div>
+        {% endif %}
 
         <!-- Score Card -->
         <div class="card shadow-lg mb-4">
@@ -28,6 +34,45 @@
                 </div>
             </div>
         </div>
+
+        {% if is_multiplayer and leaderboard %}
+        <!-- Leaderboard -->
+        <div class="card shadow-lg mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-trophy me-2"></i>Leaderboard</h4>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for participant in leaderboard %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center {% if loop.index == 1 %}bg-warning bg-opacity-10{% endif %}">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                {% if loop.index == 1 %}
+                                    <i class="fas fa-crown fa-2x text-warning"></i>
+                                {% elif loop.index == 2 %}
+                                    <i class="fas fa-medal fa-2x text-secondary"></i>
+                                {% elif loop.index == 3 %}
+                                    <i class="fas fa-medal fa-2x text-warning"></i>
+                                {% else %}
+                                    <span class="badge bg-secondary rounded-pill" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 1.2em;">{{ loop.index }}</span>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <strong>{{ participant.game_name }}</strong>
+                                {% if participant.completed_at %}
+                                <small class="text-muted d-block">Completed at {{ participant.completed_at[:19] }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div>
+                            <span class="badge bg-success fs-6">Score: {{ participant.score }}/{{ results.total }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Question Results -->
         <div class="card shadow-lg">
@@ -90,12 +135,18 @@
         </div>
 
         <div class="text-center mt-5">
+            {% if is_multiplayer %}
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg me-3">
+                <i class="fas fa-home me-2"></i>Home
+            </a>
+            {% else %}
             <a href="{{ url_for('quiz') }}" class="btn btn-success btn-lg me-3">
                 <i class="fas fa-redo me-2"></i>Take Quiz Again
             </a>
             <a href="{{ url_for('index') }}" class="btn btn-outline-success btn-lg me-3">
                 <i class="fas fa-home me-2"></i>Home
             </a>
+            {% endif %}
             <a href="https://open.spotify.com" target="_blank" class="btn btn-outline-success btn-lg">
                 <i class="fab fa-spotify me-2"></i>Open Spotify
             </a>

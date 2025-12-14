@@ -181,3 +181,76 @@ class User(db.Model):
     playlists = db.relationship('Playlist', backref='user', lazy=True, cascade='all, delete-orphan')
     top_tracks = db.relationship('TopTrack', backref='user', lazy=True, cascade='all, delete-orphan')
     top_artists = db.relationship('TopArtist', backref='user', lazy=True, cascade='all, delete-orphan')
+    hosted_lobbies = db.relationship('Lobby', backref='host', lazy=True, foreign_keys='Lobby.host_user_id')
+    lobby_participations = db.relationship('LobbyParticipant', backref='user', lazy=True)
+
+
+class Lobby(db.Model):
+    """Game lobby for multiplayer"""
+    __tablename__ = 'lobbies'
+    
+    id = db.Column(db.String(10), primary_key=True)  # Short code like "ABC123"
+    host_user_id = db.Column(db.String(50), db.ForeignKey('users.spotify_id'), nullable=True)  # Nullable - host doesn't need Spotify
+    status = db.Column(db.String(20), default='waiting')  # waiting, active, finished
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime, nullable=True)
+    selected_player_ids = db.Column(db.Text)  # JSON array of user_ids whose data is used for questions
+    current_question = db.Column(db.Integer, default=0)  # Current question index
+    
+    # Relationships
+    participants = db.relationship('LobbyParticipant', backref='lobby', lazy=True, cascade='all, delete-orphan')
+    
+    def to_dict(self):
+        import json
+        selected_players = []
+        if self.selected_player_ids:
+            try:
+                selected_players = json.loads(self.selected_player_ids)
+            except:
+                pass
+        return {
+            'id': self.id,
+            'host_user_id': self.host_user_id,
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'participant_count': len(self.participants),
+            'selected_player_ids': selected_players,
+            'current_question': self.current_question
+        }
+
+
+class LobbyParticipant(db.Model):
+    """Participants in a lobby"""
+    __tablename__ = 'lobby_participants'
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    lobby_id = db.Column(db.String(10), db.ForeignKey('lobbies.id'), nullable=False, index=True)
+    user_id = db.Column(db.String(50), db.ForeignKey('users.spotify_id'), nullable=False, index=True)
+    game_name = db.Column(db.String(100), nullable=False)  # Display name for the game
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    score = db.Column(db.Integer, default=0)  # Quiz score
+    completed_at = db.Column(db.DateTime, nullable=True)
+    current_question = db.Column(db.Integer, default=0)  # Current question they're on
+    answers = db.Column(db.Text)  # JSON object of question_id -> answer
+    question_submitted = db.Column(db.Integer, default=0)  # Last question they submitted
+    
+    def to_dict(self):
+        import json
+        answers_dict = {}
+        if self.answers:
+            try:
+                answers_dict = json.loads(self.answers)
+            except:
+                pass
+        return {
+            'id': self.id,
+            'lobby_id': self.lobby_id,
+            'user_id': self.user_id,
+            'game_name': self.game_name,
+            'joined_at': self.joined_at.isoformat() if self.joined_at else None,
+            'score': self.score,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'current_question': self.current_question,
+            'question_submitted': self.question_submitted
+        }

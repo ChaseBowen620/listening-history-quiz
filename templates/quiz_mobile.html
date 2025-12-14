@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz - Listening History Quiz{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3">
+    <div class="text-center mb-3">
+        <h4>{{ user_name }}</h4>
+        <p class="text-muted small">Multiplayer Quiz</p>
+    </div>
+
+    <div id="quiz-container">
+        <div id="loading" class="text-center py-5">
+            <div class="spinner-border text-success" role="status"></div>
+            <p class="mt-3">Loading questions...</p>
+        </div>
+
+        <div id="quiz-questions" style="display: none;">
+            <div class="progress mb-3" style="height: 8px;">
+                <div class="progress-bar bg-success" role="progressbar" style="width: 0%" id="progress-bar"></div>
+            </div>
+
+            <div id="question-container">
+                <!-- Questions will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.mobile-option-btn {
+    width: 100%;
+    padding: 20px;
+    margin: 10px 0;
+    font-size: 1.1rem;
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    background: white;
+    text-align: center;
+}
+
+.mobile-option-btn.selected {
+    border-color: #0d6efd;
+    background: #e7f3ff;
+    font-weight: bold;
+}
+
+.mobile-input {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.2rem;
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.mobile-submit-btn {
+    width: 100%;
+    padding: 20px;
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-top: 20px;
+    border-radius: 12px;
+}
+
+.drag-item-mobile {
+    padding: 15px;
+    margin: 10px 0;
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    font-size: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+let currentQuestion = 0;
+let answers = {};
+let questions = [];
+const lobbyId = '{{ lobby_id }}';
+let questionAnswered = {};
+
+async function loadQuiz() {
+    try {
+        const response = await fetch(`/api/quiz-questions?lobby=${lobbyId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lobby_id: lobbyId })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load questions');
+        }
+        
+        const data = await response.json();
+        questions = data.questions;
+        
+        showQuestion(0);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('quiz-questions').style.display = 'block';
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('loading').innerHTML = '<div class="alert alert-danger">Failed to load quiz</div>';
+    }
+}
+
+function showQuestion(index) {
+    const question = questions[index];
+    const container = document.getElementById('question-container');
+    
+    let html = `<div class="card mb-3"><div class="card-body">`;
+    html += `<h5 class="mb-3">${question.question}</h5>`;
+    
+    switch(question.type) {
+        case 'placement':
+        case 'multiple_choice':
+            html += renderOptionsMobile(question);
+            break;
+        case 'true_false':
+            html += renderTrueFalseMobile(question);
+            break;
+        case 'drag_drop':
+            html += renderDragDropMobile(question);
+            break;
+        case 'fill_blank':
+            html += renderFillBlankMobile(question);
+            break;
+    }
+    
+    html += `</div></div>`;
+    container.innerHTML = html;
+    
+    if (question.type === 'drag_drop') {
+        initializeDragDrop(question.id);
+    }
+    
+    // Update progress
+    const progress = ((index + 1) / questions.length) * 100;
+    document.getElementById('progress-bar').style.width = progress + '%';
+    
+    currentQuestion = index;
+}
+
+function renderOptionsMobile(question) {
+    const options = question.options || [];
+    const currentAnswer = answers[question.id];
+    const isAnswered = questionAnswered[question.id] || false;
+    
+    let html = '';
+    options.forEach((option, i) => {
+        const isSelected = currentAnswer === option;
+        html += `
+            <button class="mobile-option-btn ${isSelected ? 'selected' : ''}" 
+                    ${isAnswered ? 'disabled' : ''}
+                    onclick="selectOption('${question.id}', '${option.replace(/'/g, "\\'")}')">
+                ${option}
+            </button>
+        `;
+    });
+    
+    if (!isAnswered) {
+        html += `<button class="btn btn-success mobile-submit-btn" onclick="submitAnswer('${question.id}')">Submit</button>`;
+    }
+    
+    return html;
+}
+
+function renderTrueFalseMobile(question) {
+    const currentAnswer = answers[question.id];
+    const isAnswered = questionAnswered[question.id] || false;
+    
+    return `
+        <button class="mobile-option-btn ${currentAnswer === 'true' ? 'selected' : ''}" 
+                ${isAnswered ? 'disabled' : ''}
+                onclick="selectOption('${question.id}', 'true')">
+            True
+        </button>
+        <button class="mobile-option-btn ${currentAnswer === 'false' ? 'selected' : ''}" 
+                ${isAnswered ? 'disabled' : ''}
+                onclick="selectOption('${question.id}', 'false')">
+            False
+        </button>
+        ${!isAnswered ? '<button class="btn btn-success mobile-submit-btn" onclick="submitAnswer(\'' + question.id + '\')">Submit</button>' : ''}
+    `;
+}
+
+function renderDragDropMobile(question) {
+    const items = question.data?.items || [];
+    const currentOrder = answers[question.id] || items.map((item, i) => i);
+    const isAnswered = questionAnswered[question.id] || false;
+    
+    let html = '<p class="text-muted mb-3">Drag to reorder:</p>';
+    html += `<div id="drag-list-${question.id}">`;
+    
+    currentOrder.forEach((idx) => {
+        const item = items[idx];
+        html += `
+            <div class="drag-item-mobile" data-index="${idx}">
+                <strong>${item.name}</strong>
+                ${item.artist ? `<div class="text-muted small">${item.artist}</div>` : ''}
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    if (!isAnswered) {
+        html += '<button class="btn btn-success mobile-submit-btn" onclick="submitAnswer(\'' + question.id + '\')">Submit</button>';
+    }
+    
+    return html;
+}
+
+function renderFillBlankMobile(question) {
+    const currentAnswer = answers[question.id] || '';
+    const imageUrl = question.data?.image_url;
+    const isAnswered = questionAnswered[question.id] || false;
+    
+    let html = '';
+    if (imageUrl) {
+        html += `<img src="${imageUrl}" class="img-fluid mb-3" style="max-width: 100%; border-radius: 8px;">`;
+    }
+    html += `
+        <input type="text" 
+               class="mobile-input" 
+               id="fill-blank-${question.id}"
+               placeholder="Enter answer..."
+               value="${currentAnswer}"
+               ${isAnswered ? 'disabled' : ''}>
+    `;
+    if (!isAnswered) {
+        html += '<button class="btn btn-success mobile-submit-btn" onclick="submitAnswer(\'' + question.id + '\')">Submit</button>';
+    }
+    
+    return html;
+}
+
+function selectOption(questionId, value) {
+    answers[questionId] = value;
+    showQuestion(currentQuestion);
+}
+
+function initializeDragDrop(questionId) {
+    const list = document.getElementById(`drag-list-${questionId}`);
+    if (!list) return;
+    
+    new Sortable(list, {
+        animation: 150,
+        handle: '.drag-item-mobile',
+        onEnd: function(evt) {
+            const items = Array.from(list.children);
+            const order = items.map(item => parseInt(item.dataset.index));
+            answers[questionId] = order;
+        }
+    });
+}
+
+async function submitAnswer(questionId) {
+    const question = questions.find(q => q.id === questionId);
+    if (!question) return;
+    
+    const answer = answers[questionId];
+    if (answer === undefined || answer === '') {
+        alert('Please select an answer');
+        return;
+    }
+    
+    // For fill blank, get value from input
+    if (question.type === 'fill_blank') {
+        const input = document.getElementById(`fill-blank-${questionId}`);
+        answer = input.value.trim();
+        answers[questionId] = answer;
+    }
+    
+    questionAnswered[questionId] = true;
+    
+    // Submit to server
+    try {
+        await fetch(`/api/lobby/${lobbyId}/submit-answer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question_id: questionId,
+                answer: answer,
+                question_index: currentQuestion
+            })
+        });
+        
+        // Show waiting message
+        const container = document.getElementById('question-container');
+        container.innerHTML = `
+            <div class="alert alert-info text-center">
+                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                <h5>Answer submitted!</h5>
+                <p>Waiting for other players...</p>
+            </div>
+        `;
+        
+        // Poll for question completion
+        checkQuestionStatus();
+    } catch (error) {
+        console.error('Error submitting answer:', error);
+        alert('Failed to submit answer');
+    }
+}
+
+async function checkQuestionStatus() {
+    const response = await fetch(`/api/lobby/${lobbyId}/question-status`);
+    const data = await response.json();
+    
+    if (data.answered >= data.total_participants) {
+        // Everyone answered - move to next question
+        if (currentQuestion < questions.length - 1) {
+            currentQuestion++;
+            showQuestion(currentQuestion);
+        } else {
+            // Quiz complete
+            window.location.href = `/results?lobby=${lobbyId}`;
+        }
+    } else {
+        // Check again in 2 seconds
+        setTimeout(checkQuestionStatus, 2000);
+    }
+    
+    // Timeout after 15 seconds
+    setTimeout(() => {
+        if (currentQuestion < questions.length - 1) {
+            currentQuestion++;
+            showQuestion(currentQuestion);
+        } else {
+            window.location.href = `/results?lobby=${lobbyId}`;
+        }
+    }, 15000);
+}
+
+document.addEventListener('DOMContentLoaded', loadQuiz);
+</script>
+{% endblock %}
